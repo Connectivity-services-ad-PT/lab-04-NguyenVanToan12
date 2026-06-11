@@ -15,10 +15,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Lint OpenAPI contract
         run: npm run lint:openapi
@@ -26,17 +25,33 @@ jobs:
       - name: Build Docker image
         run: docker build -t fit4110/iot-ingestion:lab04 .
 
+      - name: Prepare Environment File
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            echo "AUTH_TOKEN=local-dev-token" > .env
+          fi
+          # Ghi đè token kiểm thử vào file .env vừa tạo
+          echo "AUTH_TOKEN=local-dev-token" >> .env
+
       - name: Run Docker container
         run: |
-          docker run -d --rm \
+          docker run -d \
             --name fit4110-iot-lab04 \
             -p 8000:8000 \
-            --env-file .env.example \
+            --env-file .env \
             fit4110/iot-ingestion:lab04
 
-      - name: Wait for service health
-        run: npx wait-on http://localhost:8000/health --timeout 30000
+      - name: Check Container Boot Logs
+        run: |
+          sleep 5
+          docker ps -a
+          docker logs fit4110-iot-lab04
 
+      - name: Wait for service health
+        run: npx wait-on http-get://127.0.0.1:8000/health --timeout 30000
+        
       - name: Run Newman against Docker container
         run: npm run test:local
 
@@ -44,9 +59,9 @@ jobs:
         if: failure()
         run: docker logs fit4110-iot-lab04 || true
 
-      - name: Stop container
+      - name: Create reports directory
         if: always()
-        run: docker stop fit4110-iot-lab04 || true
+        run: mkdir -p reports
 
       - name: Upload Newman reports
         if: always()

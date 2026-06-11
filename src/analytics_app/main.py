@@ -18,7 +18,7 @@ app = FastAPI(
     title="FIT4110 Lab 04 - IoT Ingestion Service",
     version=SERVICE_VERSION,
     description=(
-        "Dockerized IoT Ingestion API aligned with the Lab 03 OpenAPI/Postman contract."
+        "Dockerized IoT Ingestion API aligned with the Lab 03/04 OpenAPI/Postman contract."
     ),
 )
 
@@ -65,16 +65,6 @@ class SensorReadingCreate(BaseModel):
     timestamp: str = Field(..., examples=["2026-05-13T08:30:00+07:00"])
 
 
-class SensorReading(BaseModel):
-    reading_id: str
-    device_id: str
-    metric: SensorMetric
-    value: float
-    unit: Optional[SensorUnit] = None
-    timestamp: str
-    created_at: str
-
-
 class SensorReadingCreated(BaseModel):
     reading_id: str
     device_id: str
@@ -112,22 +102,16 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     else:
         problem = build_problem(
             status_code=exc.status_code,
-            title=status.HTTP_STATUS_CODES.get(exc.status_code, "HTTP Error"),
+            title="Unauthorized" if exc.status_code == 401 else status.HTTP_STATUS_CODES.get(exc.status_code, "HTTP Error"),
             detail=str(exc.detail),
             instance=str(request.url.path),
+            problem_type="https://smart-campus.local/problems/unauthorized" if exc.status_code == 401 else "about:blank"
         )
-
-    problem.setdefault("status", exc.status_code)
-    problem.setdefault("title", status.HTTP_STATUS_CODES.get(exc.status_code, "HTTP Error"))
-    problem.setdefault("type", "about:blank")
-    problem.setdefault("detail", "Request failed")
-    problem.setdefault("instance", str(request.url.path))
 
     return JSONResponse(
         status_code=exc.status_code,
         content=problem,
-        media_type="application/problem+json",
-        headers=getattr(exc, "headers", None),
+        media_type="application/problem+json"
     )
 
 
@@ -136,7 +120,7 @@ async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     first_error = exc.errors()[0] if exc.errors() else {}
-    location = ".".join(str(item) for item in first_error.get("loc", []))
+    location = ".".join(str(item) for item in first_error.get("loc", []) if item != "body")
     message = first_error.get("msg", "Request validation error")
     detail = f"{location}: {message}" if location else message
 
@@ -149,7 +133,7 @@ async def validation_exception_handler(
             instance=str(request.url.path),
             problem_type="https://smart-campus.local/problems/validation-error",
         ),
-        media_type="application/problem+json",
+        headers={"Content-Type": "application/problem+json"}
     )
 
 
@@ -157,38 +141,34 @@ def verify_bearer_token(authorization: Optional[str] = Header(default=None)) -> 
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=build_problem(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                title="Unauthorized",
-                detail="Missing Authorization header",
-                problem_type="https://smart-campus.local/problems/unauthorized",
-            ),
+            detail="Missing Authorization header",
         )
 
     expected = f"Bearer {AUTH_TOKEN}"
     if authorization != expected:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=build_problem(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                title="Unauthorized",
-                detail="Invalid bearer token",
-                problem_type="https://smart-campus.local/problems/unauthorized",
-            ),
+            detail="Invalid bearer token",
         )
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def next_reading_id() -> str:
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
-    return f"R-{today}-{len(READINGS) + 1:04d}"
+    today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    sequence_num = len(READINGS) + 1
+    return f"R-{today_str}-{sequence_num:04d}"
 
 
-@app.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
+# 🔥 SỬA LỖI 405: Chuyển sang app.api_route để chấp nhận cả phương thức HEAD từ wait-on linter trên GitHub
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse)
+def health(request: Request) -> Optional[HealthResponse]:
+    # Nếu lệnh thăm dò chỉ gửi gói HEAD, phản hồi nhanh bằng HTTP 200 trống (không cần tốn băng thông sinh body)
+    if request.method == "HEAD":
+        return None
+        
     return HealthResponse(
         status="ok",
         service=SERVICE_NAME,
@@ -204,7 +184,6 @@ def health() -> HealthResponse:
     responses={
         401: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
-        429: {"model": ProblemDetails},
     },
 )
 def create_reading(payload: SensorReadingCreate, response: Response) -> SensorReadingCreated:
@@ -262,4 +241,4 @@ def get_reading(reading_id: str) -> Dict:
             instance=f"/readings/{reading_id}",
             problem_type="https://smart-campus.local/problems/not-found",
         ),
-    )
+    )   

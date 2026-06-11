@@ -1,0 +1,14 @@
+{
+  "eventId": "evt_0196fb3d-dad7-7d1e-9f49-5d5148d2b888",
+  "eventType": "access.log.created",
+  "occurredAt": "2026-05-29T11:00:00.000Z",
+  "correlationId": "corr_0196fb3d-dcd7-7d1e-9f49-5d5148d2b999",
+  "source": "access-gate-service",
+  "data": {
+    "logId": "log-0196fb3d-ded7-7d1e-9f49-5d5148d2baaa",
+    "gateId": "gate-lib-01",
+    "cardHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "direction": "ENTER",
+    "accessStatus": "SUCCESS"
+  }
+}

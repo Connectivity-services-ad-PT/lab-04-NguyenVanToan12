@@ -1,0 +1,7 @@
+{
+  "sourceService": "core-business",
+  "alertType": "UNAUTHORIZED_ACCESS",
+  "severity": "CRITICAL",
+  "message": "Phat hien dot nhap trai phep",
+  "relatedEventId": "evt_0196fb3d-7ad7-7d1e-9f49-5d5148d2bcba"
+}

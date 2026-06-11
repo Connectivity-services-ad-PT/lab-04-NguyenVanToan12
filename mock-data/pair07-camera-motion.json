@@ -1,0 +1,14 @@
+{
+  "eventId": "evt_0196fb3d-7ad7-7d1e-9f49-5d5148d2bcba",
+  "eventType": "camera.motion.detected",
+  "occurredAt": "2026-05-29T10:35:00.500Z",
+  "correlationId": "corr_0196fb3d-7bd7-7d1e-9f49-5d5148d2bccc",
+  "source": "camera-stream-service",
+  "data": {
+    "cameraId": "cam-gate-01",
+    "location": "MAIN_GATE",
+    "motionAreaRatio": 0.35,
+    "confidence": 0.92,
+    "snapshotUrl": "https://storage.smartcampus.edu.vn/snapshots/2026/05/29/cam-gate-01_103500.jpg"
+  }
+}
